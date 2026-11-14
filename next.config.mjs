@@ -1,7 +1,4 @@
-/** Enkel statisk webbplats utan databas eller serverkostnad. */
-const nextConfig = {
-  output: 'export',
-  images: { unoptimized: true }
-};
+// Serverdrift krävs för /api/offert och automatisk e-post.
+const nextConfig = {};
 
 export default nextConfig;

@@ -1,46 +1,74 @@
 # Komplett Flytt och Transport
 
-En enkel, mobilanpassad hemsida byggd med **Next.js (App Router), React-komponenter och CSS**. Designen utgår från företagets uppladdade logotyp. Den är gjord för att kunna publiceras billigt, utan databas eller bokningssystem.
+En enkel, responsiv hemsida med **Next.js 16 (App Router)** och separata komponenter. Mobil och iPad är prioriterade. Designen utgår från företagets logotyp och använder svart, vitt och rött. Projektet hålls under **30 källfiler**.
 
-## Starta lokalt
+## Starta på datorn
 
-Kräver Node.js 20.9 eller senare.
+Du behöver Node.js 22 eller senare.
 
 ```bash
 npm install
+cp .env.example .env.local   # Windows PowerShell: Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Öppna **http://localhost:3000**. Stoppa med **Ctrl+C**.
+Öppna `http://localhost:3000`. Avsluta med Ctrl+C.
 
-## Lägg till kontaktuppgifter
+## Koppla företagets telefon och e-post
 
-1. Kopiera `.env.example` till `.env.local`.
-2. Fyll i företagets riktiga `NEXT_PUBLIC_CONTACT_EMAIL` och `NEXT_PUBLIC_CONTACT_PHONE`.
-3. Starta om utvecklingsservern. Vid publicering behöver sidan byggas om när uppgifterna ändras.
+Öppna `.env.local` och ange:
 
-Utan e-postadress kan offertformuläret skapa och kopiera en färdig förfrågan men inte erbjuda ”Öppna e-post”. **Det skickar inte mejl automatiskt.** Formuläret lagrar ingenting på en server.
+```dotenv
+NEXT_PUBLIC_CONTACT_PHONE=+46...
+NEXT_PUBLIC_CONTACT_EMAIL=foretag@dindoman.se
+CONTACT_INBOX_EMAIL=foretag@dindoman.se
+```
 
-## Bygg och publicera billigt
+- Telefonnummer visas i kontaktsektionen, i sidfoten, menyn och mobilens snabbkontakt.
+- E-postadressen visas som klickbar mejllänk. `CONTACT_INBOX_EMAIL` är inkorgen som får offertmejlen (den kan vara en Gmail-, Outlook- eller företagsadress).
+- Ingen faktisk kontaktadress har lagts in i projektet eftersom uppgifterna ännu inte har tillhandahållits.
+
+## Aktivera automatiska mejl via Resend
+
+Denna version skickar **två mejl** när någon fyller i offertformuläret: ett med alla uppgifter till företaget och en automatisk mottagningsbekräftelse till kunden. Inget databas- eller bokningssystem behövs.
+
+1. Registrera ett konto på [Resend](https://resend.com/).
+2. Lägg till företagets egen domän och verifiera den via DNS enligt Resends instruktioner. Du kan inte skicka som en vanlig `@gmail.com`-adress utan egen verifierad avsändardomän. Företagets **mottagaradress** kan däremot vara Gmail.
+3. Skapa en API-nyckel under *API Keys*.
+4. Fyll i ytterligare två rader i `.env.local`:
+
+   ```dotenv
+   RESEND_FROM_EMAIL=Komplett Flytt <offert@dindoman.se>
+   RESEND_API_KEY=re_... 
+   ```
+
+5. Starta om servern. För produktionsdrift lägger du in alla fem miljövariabler i din hostings hemlighetsinställningar och gör en ny deployment.
+6. Testa med ett eget mejlkonto: skicka en offert, kontrollera att företaget får uppgifterna och att avsändaren får ett automatiskt svar. Kontrollera även skräppost.
+
+**Viktigt:** Webbplatsen måste köras på hosting med **Next.js-server eller serverless-funktioner** (till exempel Vercel eller Netlify med Next.js-stöd). `next.config.mjs` exporterar inte längre en helt statisk `out/`-mapp – en statisk filhost kan inte köra `/api/offert`.
+
+Om mejltjänsten inte är konfigurerad är formulärets skicka-knapp inaktiverad och sidan visar tydlig information. Ingen falsk leveransbekräftelse visas.
+
+## Skydd och integritet
+
+- Alla API-nycklar stannar på servern och `.env.local` finns i `.gitignore`.
+- Formuläret kontrolleras både i webbläsaren och på servern. En dold honeypot och enkel IP-baserad hastighetsbegränsning dämpar spam.
+- Minnesbaserad hastighetsbegränsning är **inte tillräcklig i en serverless-miljö med flera instanser**. Innan större trafik bör du aktivera bot-/rate-limit-skydd i hostingen.
+- Ingen kunddatabas används. E-postleverantören och företagets inkorg hanterar dock de personuppgifter som skickas. Företaget ansvarar för korrekt integritetstext och hantering av uppgifterna.
+- Den automatiska bekräftelsen betyder bara **mottagen offertförfrågan**, inte att flytten är bokad eller godkänd.
+
+## Kontrollera och publicera
 
 ```bash
 npm run build
+npm run start
 ```
 
-Next.js exporterar en statisk hemsida i `out/`. Publicera den på ett statiskt webbhotell, exempelvis via GitHub-koppling på Netlify (byggkommando `npm run build`, publiceringsmapp `out`). En domän kan köpas separat. Gratisplaner har användningsbegränsningar.
+GitHub Actions kör en Next.js-byggkontroll vid varje push. Kontrollera tjänster, verksamhetsområden, företagsuppgifter och RUT-information före publicering. Köp domän separat om företaget inte redan har en.
 
-## Viktigt före skarp publicering
+## Struktur
 
-- Kontrollera att de tre listade tjänsterna faktiskt erbjuds.
-- Ange rätt kontaktuppgifter och verksamhetsområden; sidan påstår inte att firman flyttar i hela Sverige.
-- Lägg till juridisk företagsinformation och integritetsinformation vid behov.
-- RUT-avdrag beror på Skatteverkets villkor och avser kvalificerad arbetskostnad.
-
-## Kodstruktur
-
-- `app/` – sida, metadata och global CSS.
-- `components/` – separata sektioner och interaktivt offertformulär.
-- `lib/site.js` – företagets namn, tjänster och vanliga frågor.
+- `app/` – startsida, CSS, metadata och serverendpoint `api/offert/route.js`.
+- `components/` – header, hero, tjänster, områden, kontakt, mobilknappar och offertformulär.
+- `lib/site.js` – tjänsteinformation och kontaktuppgifter från miljövariabler.
 - `public/` – logotyp och favicon.
-
-Max 30 källfiler; inga tester, databaser, API-rutter, UI-bibliotek eller onödiga konfigurationsfiler.

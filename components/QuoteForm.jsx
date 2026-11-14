@@ -1,66 +1,95 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
-export default function QuoteForm({ contactEmail, contactPhone }) {
-  const [draft, setDraft] = useState('');
-  const [copied, setCopied] = useState(false);
-  const draftRef = useRef(null);
+export default function QuoteForm({ contactEmail, contactPhone, emailEnabled }) {
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState(null);
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const value = key => String(data.get(key) || '').trim();
-    const message = [
-      'OFFERTFÖRFRÅGAN – KOMPLETT FLYTT OCH TRANSPORT',
-      '',
-      `Namn: ${value('name')}`,
-      `Telefon: ${value('phone')}`,
-      `E-post: ${value('email') || 'Ej angiven'}`,
-      `Flytt från: ${value('from')}`,
-      `Flytt till: ${value('to')}`,
-      `Tjänst: ${value('service')}`,
-      `Önskat datum: ${value('date') || 'Inte bestämt'}`,
-      '',
-      `Övriga uppgifter: ${value('notes') || 'Inga'}`,
-      '',
-      'Vänligen återkom med pris och om uppdraget är möjligt.',
-    ].join('\n');
-    setDraft(message);
-    setCopied(false);
-  }
+    if (pending) return;
+    setPending(true);
+    setResult(null);
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const payload = Object.fromEntries(fields.entries());
+    payload.consent = fields.get('consent') === 'on';
 
-  async function copyDraft() {
     try {
-      await navigator.clipboard.writeText(draft);
-      setCopied(true);
+      const response = await fetch('/api/offert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setResult({ type: 'error', text: data.error || 'Något gick fel. Försök igen.' });
+        return;
+      }
+      form.reset();
+      setResult({
+        type: data.confirmationSent ? 'success' : 'notice',
+        text: data.confirmationSent
+          ? 'Tack! Vi har fått din förfrågan och skickat en bekräftelse till din e-postadress.'
+          : 'Tack! Vi har fått din förfrågan, men kunde inte skicka bekräftelsemejlet. Du behöver inte skicka igen.',
+      });
     } catch {
-      draftRef.current?.focus();
-      draftRef.current?.select();
-      setCopied(false);
+      setResult({ type: 'error', text: 'Kunde inte ansluta. Kontrollera internetanslutningen och försök igen.' });
+    } finally {
+      setPending(false);
     }
   }
-
-  const subject = 'Offertförfrågan – Komplett Flytt och Transport';
-  const emailLink = contactEmail
-    ? `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`
-    : '';
 
   return (
     <section className="section quote-section" id="offert" aria-labelledby="quote-title">
       <div className="container quote-layout">
-        <div className="quote-intro"><p className="eyebrow"><span className="dash" /> KONTAKTA OSS</p><h2 id="quote-title">Berätta om <span>din flytt.</span></h2><p>Fyll i några uppgifter så får du en färdig förfrågan att skicka. Du behöver inte veta exakt hur allt ska gå till än.</p><ul><li>Det tar bara någon minut att fylla i</li><li>Du kan beskriva särskilda önskemål</li><li>Du får ett färdigt meddelande att skicka</li></ul>{contactPhone ? <a className="call-link" href={`tel:${contactPhone.replace(/[^+\d]/g, '')}`}>Vill du hellre ringa? {contactPhone} ↗</a> : null}</div>
-        <div className="form-card"><div className="form-top"><div><span>OFFERTFÖRFRÅGAN</span><h3>Vad behöver du hjälp med?</h3></div><small>01 / 01</small></div>
-          <form onSubmit={submit}>
-            <div className="form-row"><label>Namn <em>*</em><input name="name" type="text" autoComplete="name" placeholder="För- och efternamn" maxLength={100} required /></label><label>Telefon <em>*</em><input name="phone" type="tel" autoComplete="tel" placeholder="Ditt telefonnummer" maxLength={35} required /></label></div>
-            <label>E-post (valfritt)<input name="email" type="email" autoComplete="email" placeholder="namn@exempel.se" maxLength={150} /></label>
-            <div className="form-row"><label>Flytt från <em>*</em><input name="from" placeholder="Ort eller postnummer" maxLength={100} required /></label><label>Flytt till <em>*</em><input name="to" placeholder="Ort eller postnummer" maxLength={100} required /></label></div>
-            <div className="form-row"><label>Typ av hjälp <em>*</em><select name="service" defaultValue="" required><option value="" disabled>Välj tjänst</option><option>Bohagsflytt</option><option>Företagsflytt</option><option>Transport och bärhjälp</option><option>Annat / osäker</option></select></label><label>Önskat datum<input name="date" type="date" /></label></div>
-            <label>Övrigt (valfritt)<textarea name="notes" placeholder="Till exempel storlek på bostad, våning eller tunga möbler..." rows={3} maxLength={1200} /></label>
-            <button className="btn btn-red submit" type="submit">Förbered offertförfrågan <span aria-hidden="true">↗</span></button>
+        <div className="quote-intro">
+          <p className="eyebrow"><span className="dash" /> KOSTNADSFRI FÖRFRÅGAN</p>
+          <h2 id="quote-title">Få en offert för <span>din flytt.</span></h2>
+          <p>Beskriv din flytt och skicka direkt till oss. Du får ett automatiskt bekräftelsemejl när vi tagit emot din förfrågan.</p>
+          <ul>
+            <li>Enkelt att fylla i från mobilen</li>
+            <li>Inget konto eller bokning krävs</li>
+            <li>Vi återkommer med ett personligt förslag</li>
+          </ul>
+          {contactPhone && <a className="call-link" href={`tel:${contactPhone.replace(/[^+\d]/g, '')}`}>Vill du hellre ringa? {contactPhone} ↗</a>}
+          {contactEmail && <a className="call-link" href={`mailto:${contactEmail}`}>Eller mejla oss: {contactEmail} ↗</a>}
+        </div>
+        <div className="form-card">
+          <div className="form-top"><div><span>OFFERTFÖRFRÅGAN</span><h3>Vad behöver du hjälp med?</h3></div><small>ENKELT &amp; SNABBT</small></div>
+          <form onSubmit={submit} aria-describedby="form-privacy">
+            <div className="form-row">
+              <label>Namn <em>*</em><input name="name" type="text" autoComplete="name" placeholder="För- och efternamn" maxLength={100} required /></label>
+              <label>Telefon <em>*</em><input name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="Ditt telefonnummer" maxLength={35} minLength={6} required /></label>
+            </div>
+            <label>E-post <em>*</em><input name="email" type="email" autoComplete="email" inputMode="email" placeholder="namn@exempel.se" maxLength={150} required /></label>
+            <div className="form-row">
+              <label>Flytt från <em>*</em><input name="from" type="text" placeholder="Ort eller postnummer" maxLength={100} required /></label>
+              <label>Flytt till <em>*</em><input name="to" type="text" placeholder="Ort eller postnummer" maxLength={100} required /></label>
+            </div>
+            <div className="form-row">
+              <label>Typ av hjälp <em>*</em>
+                <select name="service" defaultValue="" required>
+                  <option value="" disabled>Välj tjänst</option>
+                  <option>Bohagsflytt</option>
+                  <option>Företagsflytt</option>
+                  <option>Transport och bärhjälp</option>
+                  <option>Annat / osäker</option>
+                </select>
+              </label>
+              <label>Önskat datum<input name="date" type="date" /></label>
+            </div>
+            <label>Övrig information (valfritt)<textarea name="notes" placeholder="Exempel: antal rum, våning, hiss eller tunga möbler" rows={3} maxLength={1200} /></label>
+            <div className="honey-field" aria-hidden="true"><label>Webbplats<input name="website" type="text" tabIndex={-1} autoComplete="off" /></label></div>
+            <label className="consent"><input name="consent" type="checkbox" required /><span>Jag godkänner att mina uppgifter används för att hantera offertförfrågan och skicka en bekräftelse via e-post. <em>*</em></span></label>
+            <button className="btn btn-red submit" type="submit" disabled={pending || !emailEnabled}>
+              {pending ? 'Skickar förfrågan…' : 'Skicka offertförfrågan'} <span aria-hidden="true">↗</span>
+            </button>
           </form>
-          <p className="privacy-note">Inga personuppgifter skickas automatiskt från sidan. Du väljer själv om du vill kopiera eller mejla din förfrågan.</p>
-          {draft ? <div className="draft" role="status" aria-live="polite"><strong>Din förfrågan är klar!</strong><p>{contactEmail ? 'Klicka på ”Öppna e-post” och skicka meddelandet från ditt e-postprogram, eller kopiera texten.' : 'Kopiera texten nedan. Företagets e-postadress behöver fyllas i innan sidan används av kunder.'}</p><textarea ref={draftRef} aria-label="Din färdiga offertförfrågan" readOnly rows={9} value={draft} /><div className="draft-buttons"><button type="button" className="btn btn-dark" onClick={copyDraft}>{copied ? 'Kopierat ✓' : 'Kopiera text'}</button>{contactEmail ? <a className="btn btn-red" href={emailLink}>Öppna e-post ↗</a> : null}</div></div> : null}
+          <p className="privacy-note" id="form-privacy">Vi använder uppgifterna endast för att hantera din offertförfrågan. Ingen bokning görs automatiskt.</p>
+          {!emailEnabled && <p className="form-warning" role="status">Mejlutskicket är ännu inte aktiverat. Kontakta oss via telefon eller e-post tills företagets mejlkonto har kopplats.</p>}
+          {result && <div className={`form-feedback form-feedback-${result.type}`} role="status" aria-live="polite">{result.text}</div>}
         </div>
       </div>
     </section>
