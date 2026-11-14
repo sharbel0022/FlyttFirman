@@ -1,74 +1,58 @@
 # Komplett Flytt och Transport
 
-En enkel, responsiv hemsida med **Next.js 16 (App Router)** och separata komponenter. Mobil och iPad är prioriterade. Designen utgår från företagets logotyp och använder svart, vitt och rött. Projektet hålls under **30 källfiler**.
+En enkel, responsiv flytthemsida i **Next.js 16** med separata React-komponenter. Fungerar på mobil, surfplatta och dator och håller sig under 30 projektfiler.
 
-## Starta på datorn
+## Starta lokalt
 
-Du behöver Node.js 22 eller senare.
+Kräver Node.js 22+.
 
 ```bash
 npm install
-cp .env.example .env.local   # Windows PowerShell: Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Öppna `http://localhost:3000`. Avsluta med Ctrl+C.
+Öppna http://localhost:3000 och stoppa med Ctrl+C.
 
-## Koppla företagets telefon och e-post
+## Kontaktuppgifter
 
-Öppna `.env.local` och ange:
+Telefon **07000001** och e-post **info@gmail.com** är nu förinställda på hemsidan i `lib/site.js`. De visas som klickbara länkar i kontaktsektionen, menyn, mobilen och sidfoten. Offertmejl adresseras till **info@gmail.com** som standard. Bekräfta att dessa uppgifter tillhör firman före publicering; telefonnumret är ovanligt kort för ett svenskt mobilnummer.
+
+För att ändra utan kodändring kan du använda servermiljön:
 
 ```dotenv
-NEXT_PUBLIC_CONTACT_PHONE=+46...
-NEXT_PUBLIC_CONTACT_EMAIL=foretag@dindoman.se
-CONTACT_INBOX_EMAIL=foretag@dindoman.se
+NEXT_PUBLIC_CONTACT_PHONE=07000001
+NEXT_PUBLIC_CONTACT_EMAIL=info@gmail.com
+CONTACT_INBOX_EMAIL=info@gmail.com
 ```
 
-- Telefonnummer visas i kontaktsektionen, i sidfoten, menyn och mobilens snabbkontakt.
-- E-postadressen visas som klickbar mejllänk. `CONTACT_INBOX_EMAIL` är inkorgen som får offertmejlen (den kan vara en Gmail-, Outlook- eller företagsadress).
-- Ingen faktisk kontaktadress har lagts in i projektet eftersom uppgifterna ännu inte har tillhandahållits.
+## Koppla Resend för offert och autosvar
 
-## Aktivera automatiska mejl via Resend
+Offertformuläret skickar ett mejl med kundens uppgifter till företaget och därefter ett automatiskt bekräftelsemejl till kunden. För detta krävs två **hemliga servervariabler** på din Next.js-hosting:
 
-Denna version skickar **två mejl** när någon fyller i offertformuläret: ett med alla uppgifter till företaget och en automatisk mottagningsbekräftelse till kunden. Inget databas- eller bokningssystem behövs.
+- `RESEND_API_KEY` – en giltig API-nyckel från Resend.
+- `RESEND_FROM_EMAIL` – en avsändaradress på en **verifierad domän**, till exempel `Komplett Flytt <offert@dindoman.se>`.
 
-1. Registrera ett konto på [Resend](https://resend.com/).
-2. Lägg till företagets egen domän och verifiera den via DNS enligt Resends instruktioner. Du kan inte skicka som en vanlig `@gmail.com`-adress utan egen verifierad avsändardomän. Företagets **mottagaradress** kan däremot vara Gmail.
-3. Skapa en API-nyckel under *API Keys*.
-4. Fyll i ytterligare två rader i `.env.local`:
+**Viktigt:** Gmail-adressen kan ta emot och besvara mejl, men Resend kan **inte** använda `info@gmail.com` som avsändare utan rätt till domänen gmail.com. Du behöver därför först verifiera en egen domän i https://resend.com/domains och ange en adress på den domänen som `RESEND_FROM_EMAIL`.
 
-   ```dotenv
-   RESEND_FROM_EMAIL=Komplett Flytt <offert@dindoman.se>
-   RESEND_API_KEY=re_... 
-   ```
+För lokal testning: kopiera `.env.example` till `.env.local`, fyll i de två saknade variablerna **endast lokalt**, och starta om servern. `.env.local` ignoreras av Git och får aldrig publiceras eller delas. Om du redan delat nyckeln i en chatt bör du rotera den i Resend och använda den nya nyckeln enbart i hostingen.
 
-5. Starta om servern. För produktionsdrift lägger du in alla fem miljövariabler i din hostings hemlighetsinställningar och gör en ny deployment.
-6. Testa med ett eget mejlkonto: skicka en offert, kontrollera att företaget får uppgifterna och att avsändaren får ett automatiskt svar. Kontrollera även skräppost.
+För produktion: konfigurera variablerna i Vercel/annat Next.js-webbhotells *Environment Variables* som serverhemligheter och deploya om. Det räcker **inte** att pusha koden till GitHub. Sidan kan inte skicka mejl förrän drift, nyckel och verifierad avsändare finns.
 
-**Viktigt:** Webbplatsen måste köras på hosting med **Next.js-server eller serverless-funktioner** (till exempel Vercel eller Netlify med Next.js-stöd). `next.config.mjs` exporterar inte längre en helt statisk `out/`-mapp – en statisk filhost kan inte köra `/api/offert`.
+## Beteende och säkerhet
 
-Om mejltjänsten inte är konfigurerad är formulärets skicka-knapp inaktiverad och sidan visar tydlig information. Ingen falsk leveransbekräftelse visas.
+- Formuläret visar tydligt när mejlfunktionen inte är konfigurerad.
+- E-postadress är obligatorisk för att ett autosvar ska kunna skickas.
+- Företaget får mejlet först; kunden får därefter en bekräftelse (inte en bokning).
+- Grundläggande validering, dold spamskyddsruta och enkel begränsning per IP ingår. För en publik serverless-installation rekommenderas även hostingens rate limiting.
+- Ingen kunddatabas används. Företaget ansvarar för integritetstext och korrekt hantering av offertuppgifterna.
 
-## Skydd och integritet
+## Struktur och bygg
 
-- Alla API-nycklar stannar på servern och `.env.local` finns i `.gitignore`.
-- Formuläret kontrolleras både i webbläsaren och på servern. En dold honeypot och enkel IP-baserad hastighetsbegränsning dämpar spam.
-- Minnesbaserad hastighetsbegränsning är **inte tillräcklig i en serverless-miljö med flera instanser**. Innan större trafik bör du aktivera bot-/rate-limit-skydd i hostingen.
-- Ingen kunddatabas används. E-postleverantören och företagets inkorg hanterar dock de personuppgifter som skickas. Företaget ansvarar för korrekt integritetstext och hantering av uppgifterna.
-- Den automatiska bekräftelsen betyder bara **mottagen offertförfrågan**, inte att flytten är bokad eller godkänd.
-
-## Kontrollera och publicera
+`app/` (sida och API), `components/` (sektioner), `lib/site.js` (kontakt och tjänster), `public/` (logotyp).
 
 ```bash
 npm run build
 npm run start
 ```
 
-GitHub Actions kör en Next.js-byggkontroll vid varje push. Kontrollera tjänster, verksamhetsområden, företagsuppgifter och RUT-information före publicering. Köp domän separat om företaget inte redan har en.
-
-## Struktur
-
-- `app/` – startsida, CSS, metadata och serverendpoint `api/offert/route.js`.
-- `components/` – header, hero, tjänster, områden, kontakt, mobilknappar och offertformulär.
-- `lib/site.js` – tjänsteinformation och kontaktuppgifter från miljövariabler.
-- `public/` – logotyp och favicon.
+GitHub Actions kör byggkontroll efter push. Hosting måste stödja Next.js-serverfunktioner; en ren statisk publicering kan inte skicka mejl.

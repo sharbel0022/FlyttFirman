@@ -59,7 +59,7 @@ async function sendEmail(message, key) {
 export async function POST(request) {
   const key = process.env.RESEND_API_KEY?.trim();
   const sender = process.env.RESEND_FROM_EMAIL?.trim();
-  const inbox = process.env.CONTACT_INBOX_EMAIL?.trim();
+  const inbox = process.env.CONTACT_INBOX_EMAIL?.trim() || 'info@gmail.com';
   if (!key || !sender || !inbox) {
     return response({ error: 'Offertmejl är ännu inte aktiverat. Kontakta oss via telefon eller e-post.' }, 503);
   }

@@ -14,7 +14,7 @@ export default function Home() {
   const emailEnabled = Boolean(
     process.env.RESEND_API_KEY &&
     process.env.RESEND_FROM_EMAIL &&
-    process.env.CONTACT_INBOX_EMAIL
+    site.email
   );
 
   return (
