@@ -1,0 +1,5 @@
+export default function Footer({ email, phone }) {
+  return (
+    <footer className="footer"><div className="container"><div className="footer-main"><div><a href="#toppen" className="brand" aria-label="Till startsidan"><span className="brand-symbol">K<span>.</span></span><span className="brand-copy"><strong>KOMPLETT</strong><small>FLYTT &amp; TRANSPORT</small></span></a><p>Flytt och transport med fokus på tydlig kontakt och en smidigare plan.</p></div><nav aria-label="Sidfot"><a href="#tjanster">Våra tjänster</a><a href="#process">Så fungerar det</a><a href="#omraden">Områden</a><a href="#offert">Offert och kontakt</a></nav><div className="footer-contact"><strong>Kontakt</strong>{phone ? <a href={`tel:${phone.replace(/[^+\d]/g, '')}`}>{phone}</a> : null}{email ? <a href={`mailto:${email}`}>{email}</a> : <span>Kontaktuppgifter läggs in före publicering.</span>}</div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} Komplett Flytt och Transport.</span><a href="#toppen">Till toppen ↑</a></div></div></footer>
+  );
+}
